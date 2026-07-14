@@ -9,5 +9,6 @@ namespace AttendanceApi.Data
 
         public DbSet<Employee> Employees { get; set; }
         public DbSet<WorkShift> WorkShifts { get; set; }
+        public DbSet<AttendanceLog> AttendanceLogs { get; set; }
     }
 }
