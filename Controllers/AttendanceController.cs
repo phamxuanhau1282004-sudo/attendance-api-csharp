@@ -43,8 +43,8 @@ namespace AttendanceApi.Controllers
                     }
                     else
                     {
-                        status = 2; // Đã hoàn thành (Có đủ cả check-in và check-out trong hôm nay)
-                        logId = latestLog.Id.ToString();
+                        status = 0; // Đã hoàn thành (Có đủ cả check-in và check-out trong hôm nay)
+                        logId = null;
                     }
                 }
             }
