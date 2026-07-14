@@ -1,8 +1,8 @@
-# Sử dụng hình ảnh .NET SDK để build
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+# Sử dụng hình ảnh .NET SDK 9.0 để build
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 WORKDIR /src
 
-# Copy file project và restore các thư viện
+# Copy file project và restore
 COPY ["AttendanceApi.csproj", "./"]
 RUN dotnet restore "AttendanceApi.csproj"
 
@@ -10,8 +10,8 @@ RUN dotnet restore "AttendanceApi.csproj"
 COPY . .
 RUN dotnet publish "AttendanceApi.csproj" -c Release -o /app/publish
 
-# Sử dụng hình ảnh .NET Runtime để chạy
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
+# Sử dụng hình ảnh .NET Runtime 9.0 để chạy
+FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
 WORKDIR /app
 COPY --from=build /app/publish .
 ENTRYPOINT ["dotnet", "AttendanceApi.dll"]
