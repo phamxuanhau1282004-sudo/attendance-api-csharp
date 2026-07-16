@@ -30,30 +30,29 @@ namespace AttendanceApi.Controllers
         {
             var todayLocal = DateTime.UtcNow.AddHours(7).Date;
 
-            // Tìm ca làm nào trong ngày hôm nay mà NHÂN VIÊN VẪN CHƯA TAN CA (CheckOutTime là null)
+            // 1. ƯU TIÊN SỐ 1: Tìm ca làm đang "mở" (chưa checkout)
             var activeLog = await _context.AttendanceLogs
                 .Where(l => l.EmployeeId == userId && l.WorkDate == todayLocal && l.CheckOutTime == null)
                 .FirstOrDefaultAsync();
 
             if (activeLog != null)
             {
-                // Có ca đang mở -> Đang trong ca (Status = 1)
+                // Có ca đang mở -> Bắt buộc hiện nút TAN CA (Status = 1)
                 return Ok(new { status = 1, logId = activeLog.Id.ToString() });
             }
 
-            // Nếu không có ca nào đang mở, kiểm tra xem đã hết ca hôm nay chưa
-            // (Tuỳ logic công ty: Nếu đã có ca check-out rồi thì trả về 2)
+            // 2. NẾU KHÔNG CÓ CA NÀO MỞ: Kiểm tra xem đã hoàn thành hết các ca trong ngày chưa
             var finishedLogs = await _context.AttendanceLogs
                 .Where(l => l.EmployeeId == userId && l.WorkDate == todayLocal && l.CheckOutTime != null)
                 .ToListAsync();
 
-            // Nếu hôm nay đã có ít nhất 1 ca đã hoàn thành
             if (finishedLogs.Count > 0)
             {
+                // Đã có ca làm xong -> Hiện trạng thái hoàn thành (Status = 2)
                 return Ok(new { status = 2, logId = (string?)null });
             }
 
-            // Nếu chưa có gì cả -> Trạng thái sẵn sàng vào ca mới (Status = 0)
+            // 3. Nếu không có gì hết -> Hiện nút VÀO CA (Status = 0)
             return Ok(new { status = 0, logId = (string?)null });
         }
 
