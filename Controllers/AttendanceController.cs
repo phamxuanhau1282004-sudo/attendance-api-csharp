@@ -28,38 +28,33 @@ namespace AttendanceApi.Controllers
         [HttpGet("Status/{userId}")]
         public async Task<IActionResult> GetAttendanceStatus(Guid userId)
         {
-            // 1. Lấy dòng chấm công mới nhất của nhân viên này
-            var latestLog = await _context.AttendanceLogs
-                .Where(l => l.EmployeeId == userId)
-                .OrderByDescending(l => l.CheckInTime)
+            var todayLocal = DateTime.UtcNow.AddHours(7).Date;
+
+            // Tìm ca làm nào trong ngày hôm nay mà NHÂN VIÊN VẪN CHƯA TAN CA (CheckOutTime là null)
+            var activeLog = await _context.AttendanceLogs
+                .Where(l => l.EmployeeId == userId && l.WorkDate == todayLocal && l.CheckOutTime == null)
                 .FirstOrDefaultAsync();
 
-            int status = 0; // Mặc định: 0 (Chưa vào ca / Hôm nay chưa chấm công)
-            string? logId = null;
-
-            if (latestLog != null && latestLog.CheckInTime.HasValue)
+            if (activeLog != null)
             {
-                // 2. Chuyển giờ CheckIn (UTC lưu trên DB) sang giờ Việt Nam (+7) để so sánh chuẩn ngày
-                var checkInLocal = latestLog.CheckInTime.Value.AddHours(7);
-                var todayLocal = DateTime.UtcNow.AddHours(7);
-
-                // 3. Kiểm tra xem dòng chấm công mới nhất này có phải thuộc ngày hôm nay không
-                if (checkInLocal.Date == todayLocal.Date)
-                {
-                    if (latestLog.CheckOutTime == null)
-                    {
-                        status = 1; // Đang trong ca (Đã check-in nhưng chưa check-out)
-                        logId = latestLog.Id.ToString();
-                    }
-                    else
-                    {
-                        status = 0; // Đã hoàn thành (Có đủ cả check-in và check-out trong hôm nay)
-                        logId = null;
-                    }
-                }
+                // Có ca đang mở -> Đang trong ca (Status = 1)
+                return Ok(new { status = 1, logId = activeLog.Id.ToString() });
             }
 
-            return Ok(new { status = status, logId = logId });
+            // Nếu không có ca nào đang mở, kiểm tra xem đã hết ca hôm nay chưa
+            // (Tuỳ logic công ty: Nếu đã có ca check-out rồi thì trả về 2)
+            var finishedLogs = await _context.AttendanceLogs
+                .Where(l => l.EmployeeId == userId && l.WorkDate == todayLocal && l.CheckOutTime != null)
+                .ToListAsync();
+
+            // Nếu hôm nay đã có ít nhất 1 ca đã hoàn thành
+            if (finishedLogs.Count > 0)
+            {
+                return Ok(new { status = 2, logId = (string?)null });
+            }
+
+            // Nếu chưa có gì cả -> Trạng thái sẵn sàng vào ca mới (Status = 0)
+            return Ok(new { status = 0, logId = (string?)null });
         }
 
         // --- HÀM 2: LƯU CHẤM CÔNG (ĐOẠN MỚI) ---
