@@ -28,32 +28,35 @@ namespace AttendanceApi.Controllers
         [HttpGet("Status/{userId}")]
         public async Task<IActionResult> GetAttendanceStatus(Guid userId)
         {
-            var todayLocal = DateTime.UtcNow.AddHours(7).Date;
+            // Lấy ngày hôm nay theo giờ VN dưới dạng chuỗi "yyyy-MM-dd"
+            string todayStr = DateTime.UtcNow.AddHours(7).ToString("yyyy-MM-dd");
 
-            // 1. ƯU TIÊN SỐ 1: Tìm ca làm đang "mở" (chưa checkout)
-            var activeLog = await _context.AttendanceLogs
-    .Where(l => l.EmployeeId == userId && l.CheckOutTime == null)
-    .OrderByDescending(l => l.CheckInTime)
-    .FirstOrDefaultAsync();
+            // Lấy tất cả log của nhân viên này
+            var logs = await _context.AttendanceLogs
+                .Where(l => l.EmployeeId == userId)
+                .ToListAsync();
+
+            // So sánh bằng chuỗi để tránh lệch múi giờ
+            var activeLog = logs.FirstOrDefault(l =>
+                l.WorkDate.Value.ToString("yyyy-MM-dd") == todayStr &&
+                l.CheckOutTime == null
+            );
 
             if (activeLog != null)
             {
-                // Có ca đang mở -> Bắt buộc hiện nút TAN CA (Status = 1)
                 return Ok(new { status = 1, logId = activeLog.Id.ToString() });
             }
 
-            // 2. NẾU KHÔNG CÓ CA NÀO MỞ: Kiểm tra xem đã hoàn thành hết các ca trong ngày chưa
-            var finishedLogs = await _context.AttendanceLogs
-                .Where(l => l.EmployeeId == userId && l.WorkDate == todayLocal && l.CheckOutTime != null)
-                .ToListAsync();
+            var finishedLogs = logs.Where(l =>
+                l.WorkDate.Value.ToString("yyyy-MM-dd") == todayStr &&
+                l.CheckOutTime != null
+            ).ToList();
 
             if (finishedLogs.Count > 0)
             {
-                // Đã có ca làm xong -> Hiện trạng thái hoàn thành (Status = 2)
                 return Ok(new { status = 2, logId = (string?)null });
             }
 
-            // 3. Nếu không có gì hết -> Hiện nút VÀO CA (Status = 0)
             return Ok(new { status = 0, logId = (string?)null });
         }
 
