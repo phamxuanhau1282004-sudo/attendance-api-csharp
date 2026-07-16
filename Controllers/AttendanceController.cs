@@ -28,33 +28,16 @@ namespace AttendanceApi.Controllers
         [HttpGet("Status/{userId}")]
         public async Task<IActionResult> GetAttendanceStatus(Guid userId)
         {
-            // Lấy ngày hôm nay theo giờ VN dưới dạng chuỗi "yyyy-MM-dd"
-            string todayStr = DateTime.UtcNow.AddHours(7).ToString("yyyy-MM-dd");
-
-            // Lấy tất cả log của nhân viên này
-            var logs = await _context.AttendanceLogs
-                .Where(l => l.EmployeeId == userId)
-                .ToListAsync();
-
-            // So sánh bằng chuỗi để tránh lệch múi giờ
-            var activeLog = logs.FirstOrDefault(l =>
-                l.WorkDate.Value.ToString("yyyy-MM-dd") == todayStr &&
-                l.CheckOutTime == null
-            );
+            // BỎ QUA NGÀY THÁNG, TÌM BẤT CỨ LOG NÀO CÒN MỞ
+            var activeLog = await _context.AttendanceLogs
+                .Where(l => l.EmployeeId == userId && l.CheckOutTime == null)
+                .OrderByDescending(l => l.CheckInTime)
+                .FirstOrDefaultAsync();
 
             if (activeLog != null)
             {
+                Console.WriteLine($"[DEBUG] Tìm thấy log ID: {activeLog.Id}, Ngày lưu trong DB: {activeLog.WorkDate}");
                 return Ok(new { status = 1, logId = activeLog.Id.ToString() });
-            }
-
-            var finishedLogs = logs.Where(l =>
-                l.WorkDate.Value.ToString("yyyy-MM-dd") == todayStr &&
-                l.CheckOutTime != null
-            ).ToList();
-
-            if (finishedLogs.Count > 0)
-            {
-                return Ok(new { status = 2, logId = (string?)null });
             }
 
             return Ok(new { status = 0, logId = (string?)null });
