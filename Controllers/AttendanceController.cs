@@ -32,8 +32,9 @@ namespace AttendanceApi.Controllers
 
             // 1. ƯU TIÊN SỐ 1: Tìm ca làm đang "mở" (chưa checkout)
             var activeLog = await _context.AttendanceLogs
-                .Where(l => l.EmployeeId == userId && l.WorkDate == todayLocal && l.CheckOutTime == null)
-                .FirstOrDefaultAsync();
+    .Where(l => l.EmployeeId == userId && l.CheckOutTime == null)
+    .OrderByDescending(l => l.CheckInTime)
+    .FirstOrDefaultAsync();
 
             if (activeLog != null)
             {
